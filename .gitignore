@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+salidas/
+*.edd
+guion_recuperado.txt
+.vscode/
+.idea/
