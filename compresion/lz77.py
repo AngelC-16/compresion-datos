@@ -38,11 +38,13 @@ MAX_CANDIDATOS = 64          # cuántas posiciones previas revisar como máximo
 
 
 def codificar(datos, ventana=VENTANA, min_coinc=MIN_COINCIDENCIA,
-              max_coinc=MAX_COINCIDENCIA, estadisticas=None):
+              max_coinc=MAX_COINCIDENCIA, estadisticas=None, traza=None):
     """Codifica `datos` (str, bytes o lista) en tokens LZ77 usando tabla hash.
 
     Si se pasa un diccionario `estadisticas`, se anota cuántas comparaciones
     de símbolos se hicieron (para comparar con la búsqueda por fuerza bruta).
+    Si se pasa una lista `traza`, se anota en cada paso qué clave se buscó en
+    la tabla hash y qué posiciones candidatas devolvió (para la interfaz visual).
     """
     tokens = []
     tabla = {}                  # TABLA HASH: trío -> [posiciones donde aparece]
@@ -58,8 +60,10 @@ def codificar(datos, ventana=VENTANA, min_coinc=MIN_COINCIDENCIA,
     while i < n:
         mejor_long, mejor_dist = 0, 0
         clave = datos[i:i + min_coinc]
+        revisados = []
         if len(clave) == min_coinc and clave in tabla:        # O(1) promedio
             candidatos = tabla[clave]
+            revisados = [p for p in candidatos[-MAX_CANDIDATOS:] if i - p <= ventana]
             # Revisamos desde la más reciente (distancias cortas primero).
             for pos in reversed(candidatos[-MAX_CANDIDATOS:]):
                 distancia = i - pos
@@ -78,6 +82,9 @@ def codificar(datos, ventana=VENTANA, min_coinc=MIN_COINCIDENCIA,
                     if longitud == max_coinc:
                         break
 
+        if traza is not None:
+            traza.append({"i": i, "clave": clave, "candidatos": revisados,
+                          "dist": mejor_dist, "long": mejor_long})
         if mejor_long >= min_coinc:
             tokens.append(("R", mejor_dist, mejor_long))
             for p in range(i, i + mejor_long):

@@ -41,9 +41,50 @@ que ocurre, usando **los mismos ejemplos de las diapositivas** (`AAAAABBBCC`, `A
 **Requisitos:** solo Python 3.8 o superior. No hay que instalar ninguna librería (todo usa la
 librería estándar).
 
+### 0.1 Interfaz visual (la forma recomendada de verlo y presentarlo)
+
 ```bash
 git clone <url-del-repositorio>
 cd compresion-datos
+python app.py
+```
+
+Se abre el navegador con una página que tiene un menú con los temas **en el orden de la
+presentación** y, en cada uno, un **reproductor paso a paso** (⏮ ◀ ▶ Reproducir ▶ ⏭) con una
+explicación de qué está haciendo el algoritmo en ese momento. Así se *evidencia* lo que hace el
+código, no solo el resultado:
+
+| Sección | Qué se ve paso a paso |
+|---|---|
+| Entropía | La tabla p(x) → −log₂ p(x) → aporte a H, la suma, y la curva de la moneda (deslizador) |
+| Estática vs. adaptativa | El costo de cada símbolo mientras el modelo «aprende» (gráfica + cursor) |
+| RLE | Cada racha que se detecta y el token que produce; editor de píxeles para probar |
+| Huffman | La cola de prioridad entregando los dos menores, el bosque fusionándose, la tabla de códigos, los bits coloreados y la **decodificación bajando por el árbol** |
+| LZ77 | La ventana, la clave buscada en la tabla hash, los candidatos, de dónde se copia y el token |
+| LZW | Lo reconocido, el código emitido y la entrada nueva del diccionario |
+| BWT | Agregar $, rotaciones, ordenar, última columna, resultado y move-to-front |
+| Aritmética | El intervalo haciendo zoom símbolo a símbolo |
+| JPEG | La imagen a cualquier calidad (o una foto propia); clic en un bloque → sus 6 etapas (píxeles, DCT, tabla, cuantización, zigzag, reconstrucción) |
+| Audio | Espectro FFT + curva de enmascaramiento con deslizadores; reproductores para **escuchar** original vs. comprimido |
+| Video | Cada cuadro con sus vectores de movimiento, la predicción y el residuo |
+| Heap | Cada comparación e intercambio al insertar y extraer, en el árbol y en el arreglo |
+| Compresor real | Arrastrar cualquier archivo y comparar contra zlib, bz2 y lzma; descargar el .edd |
+
+**Cómo está hecha:** `app.py` levanta un servidor web local (solo en el propio computador, con
+`http.server` de la librería estándar). La página (`web/`) solo **dibuja**: cada vez que se
+cambia algo, le pide los datos a Python (`compresion/api.py`), que llama a **las mismas funciones**
+explicadas en este documento y devuelve todos los pasos intermedios. Por eso lo que se ve es
+exactamente lo que hace el código Python. Cada sección tiene además un botón
+**«🐍 Ver el código Python que hace esto»**, que muestra el código fuente real de la función.
+
+Para algunas animaciones se agregaron «ganchos» opcionales que no cambian los algoritmos:
+`MinHeap(observador=...)` avisa de cada comparación/intercambio, `construir_arbol(fusiones=...)`
+anota cada fusión, `lz77.codificar(traza=...)` anota cada búsqueda en la tabla hash y
+`audio.curva_enmascaramiento(...)` devuelve la curva para dibujarla.
+
+### 0.2 En la consola
+
+```bash
 python demo.py              # menú interactivo
 python demo.py todo         # todas las secciones, en el orden de la presentación
 python demo.py huffman      # una sola sección
@@ -79,7 +120,7 @@ Las secciones `jpeg` y `audio` además **crean archivos** en la carpeta `salidas
 | `compresion/archivo.py` | Compresor real (Huffman y mini-DEFLATE) | 14-15 · «Está en todas partes» / «Ejemplo práctico» | Santiago |
 | `compresion/imagen_bmp.py` | Utilidad: guardar imágenes .bmp | — | — |
 | `demo.py` | Menú que ejecuta todo en orden | — | — |
-| `tests/test_compresion.py` | 22 pruebas automáticas | — | — |
+| `tests/test_compresion.py` | 25 pruebas automáticas | — | — |
 | `ejemplos/guion.txt` | Texto del guion (archivo de prueba) | — | — |
 
 ---
@@ -883,7 +924,7 @@ Entropía (orden 0): 4.695 bits/byte -> límite para un compresor que solo mira 
 
 **Archivo:** `tests/test_compresion.py` · **Ejecutar:** `python -m unittest discover -s tests -v`
 
-22 pruebas que verifican, entre otras cosas:
+25 pruebas que verifican, entre otras cosas:
 - Las cifras de las diapositivas: H(moneda justa) = 1, H(cargada) ≈ 0,469; `AAAAABBBCC` →
   `(5,A)(3,B)(2,C)`; `ABC` → `1A1B1C`; ABRACADABRA en 23 bits y con los códigos canónicos de la
   diapositiva; LZ77 termina en `(←7,4)`; BWT(BANANA) = `ANNB$AA`.
@@ -898,8 +939,14 @@ Entropía (orden 0): 4.695 bits/byte -> límite para un compresor que solo mira 
 
 ## 16. Guion sugerido para presentar el ejemplo práctico
 
-La diapositiva 15 («Ejemplo práctico») va justo después de «Qué hay debajo». Propuesta de
-**5–7 minutos** con la terminal abierta (fuente grande):
+La diapositiva 15 («Ejemplo práctico») va justo después de «Qué hay debajo».
+
+**Con la interfaz visual** (`python app.py`, recomendado): mismos pasos de abajo, pero en las
+secciones *Huffman* (reproducir la construcción del árbol y luego la decodificación), *LZ77*
+(avanzar con ▶ hasta el `(←7, 4)`), *Compresor real* (botón «Usar el guion») y, si hay tiempo,
+*JPEG* (bajar la calidad a 5 y hacer clic en un bloque). Use el **tema claro** en el proyector.
+
+Propuesta de **5–7 minutos** con la terminal abierta (fuente grande):
 
 1. **Huffman y sus estructuras** — `python demo.py huffman`
    *«Aquí está la cola de prioridad funcionando: en cada paso saca los dos menores — eso cuesta

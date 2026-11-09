@@ -154,5 +154,28 @@ class TestArchivo(unittest.TestCase):
         self.assertLess(len(archivo.comprimir(datos, "deflate")), len(datos) * 0.7)
 
 
+class TestAPI(unittest.TestCase):
+    """La interfaz visual depende de que cada ruta responda sin errores."""
+
+    def test_todas_las_rutas(self):
+        import json
+        from compresion.api import RUTAS
+        for nombre, funcion in RUTAS.items():
+            if nombre == "codigo":
+                continue
+            with self.subTest(ruta=nombre):
+                json.dumps(funcion({}))           # debe poder enviarse como JSON
+
+    def test_codigo_fuente(self):
+        from compresion.api import api_codigo
+        self.assertIn("def construir_arbol", api_codigo({"modulo": "huffman", "funcion": "construir_arbol"})["codigo"])
+
+    def test_heap_animado(self):
+        from compresion.api import api_heap
+        d = api_heap({"arreglo": [1, 3, 9, 7], "op": "insertar", "valor": 0})
+        self.assertEqual(d["arreglo"][0], 0)
+        self.assertTrue(any(p["accion"] == "intercambiar" for p in d["pasos"]))
+
+
 if __name__ == "__main__":
     unittest.main()

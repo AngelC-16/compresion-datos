@@ -58,7 +58,11 @@ def db(magnitud):
     return 20 * math.log10(magnitud) if magnitud > 1e-12 else -240.0
 
 
-def senal_de_prueba(segundos=1.0):
+TONOS_PRUEBA = [(1000.0, 0.60), (1156.25, 0.010), (3000.0, 0.25),
+                (3093.75, 0.005), (2000.0, 0.010)]
+
+
+def senal_de_prueba(segundos=1.0, tonos=None):
     """Mezcla de tonos (frecuencias elegidas para caer justo en un 'bin' de la FFT):
        - 1000 Hz FUERTE   (amplitud 0.60)
        - 1156 Hz débil    (0.010) -> cerca del fuerte: quedará ENMASCARADO
@@ -68,10 +72,32 @@ def senal_de_prueba(segundos=1.0):
     Todas deben ser menores que FS/2 = 4000 Hz (límite de Nyquist): una
     frecuencia mayor no se puede representar y "se disfraza" de otra (aliasing).
     """
-    tonos = [(1000.0, 0.60), (1156.25, 0.010), (3000.0, 0.25),
-             (3093.75, 0.005), (2000.0, 0.010)]
+    if tonos is None:
+        tonos = TONOS_PRUEBA
     n = int(FS * segundos)
     return [sum(a * math.sin(2 * math.pi * f * t / FS) for f, a in tonos) for t in range(n)]
+
+
+def curva_enmascaramiento(niveles, resolucion, caida_db_por_100hz=6.0, margen_db=20.0,
+                          umbral_absoluto_db=-60.0):
+    """Calcula, para cada frecuencia, el umbral por debajo del cual NO se oye.
+    Devuelve (umbrales, picos)."""
+    mitad = len(niveles) - 1
+    # Picos = máximos locales por encima del umbral absoluto.
+    picos = [k for k in range(1, mitad) if niveles[k] > umbral_absoluto_db
+             and niveles[k] >= niveles[k - 1] and niveles[k] >= niveles[k + 1]]
+    umbrales = []
+    for k in range(mitad + 1):
+        umbral = umbral_absoluto_db
+        for p in picos:
+            if p == k:
+                continue
+            distancia_hz = abs(k - p) * resolucion
+            # La curva de enmascaramiento: margen bajo el pico, y cae al alejarse.
+            enmascara = niveles[p] - margen_db - caida_db_por_100hz * distancia_hz / 100
+            umbral = max(umbral, enmascara)
+        umbrales.append(umbral)
+    return umbrales, picos
 
 
 def comprimir_trama(trama, caida_db_por_100hz=6.0, margen_db=20.0, umbral_absoluto_db=-60.0):
@@ -83,23 +109,14 @@ def comprimir_trama(trama, caida_db_por_100hz=6.0, margen_db=20.0, umbral_absolu
     mitad = n // 2
     resolucion = FS / n                                 # Hz por "bin"
     niveles = [db(abs(X[k]) / (n / 2)) for k in range(mitad + 1)]
-
-    # Picos = máximos locales por encima del umbral absoluto.
-    picos = [k for k in range(1, mitad) if niveles[k] > umbral_absoluto_db
-             and niveles[k] >= niveles[k - 1] and niveles[k] >= niveles[k + 1]]
+    umbrales, picos = curva_enmascaramiento(niveles, resolucion, caida_db_por_100hz,
+                                            margen_db, umbral_absoluto_db)
 
     conservados = 0
     borrados = []
     Y = [0j] * n
     for k in range(mitad + 1):
-        umbral = umbral_absoluto_db
-        for p in picos:
-            if p == k:
-                continue
-            distancia_hz = abs(k - p) * resolucion
-            # La curva de enmascaramiento: margen bajo el pico, y cae al alejarse.
-            enmascara = niveles[p] - margen_db - caida_db_por_100hz * distancia_hz / 100
-            umbral = max(umbral, enmascara)
+        umbral = umbrales[k]
         if niveles[k] > umbral:
             Y[k] = X[k]
             if k not in (0, mitad):
@@ -112,12 +129,12 @@ def comprimir_trama(trama, caida_db_por_100hz=6.0, margen_db=20.0, umbral_absolu
     return reconstruida, conservados, audibles, borrados
 
 
-def comprimir(senal):
+def comprimir(senal, **parametros):
     salida = []
     cons_total = tot_total = 0
     borrados = set()
     for i in range(0, len(senal) - TRAMA + 1, TRAMA):
-        rec, c, t, b = comprimir_trama(senal[i:i + TRAMA])
+        rec, c, t, b = comprimir_trama(senal[i:i + TRAMA], **parametros)
         salida.extend(rec)
         cons_total += c
         tot_total += t
@@ -125,13 +142,22 @@ def comprimir(senal):
     return salida, cons_total, tot_total, sorted(borrados)
 
 
-def guardar_wav(ruta, senal):
-    with wave.open(ruta, "wb") as w:
+def wav_en_bytes(senal):
+    """Devuelve el contenido de un archivo .wav (mono, 16 bits) en memoria."""
+    import io
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(FS)
         w.writeframes(b"".join(struct.pack("<h", int(max(-1, min(1, s)) * 32767))
                                for s in senal))
+    return buffer.getvalue()
+
+
+def guardar_wav(ruta, senal):
+    with open(ruta, "wb") as f:
+        f.write(wav_en_bytes(senal))
 
 
 def demo(carpeta_salida=None):

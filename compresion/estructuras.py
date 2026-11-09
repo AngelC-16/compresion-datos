@@ -48,8 +48,15 @@ class MinHeap:
     (frecuencia, desempate, nodo) para que la comparación sea por frecuencia).
     """
 
-    def __init__(self):
+    def __init__(self, observador=None):
         self._datos = []
+        # `observador` (opcional): función que se llama en cada comparación e
+        # intercambio. La usa la interfaz visual para animar el heap paso a paso.
+        self.observador = observador
+
+    def _avisar(self, accion, i, j):
+        if self.observador:
+            self.observador(accion, i, j, list(self._datos))
 
     def __len__(self):
         return len(self._datos)
@@ -84,8 +91,10 @@ class MinHeap:
         """sift-up: intercambia con el padre mientras rompa la propiedad de heap."""
         while i > 0:
             padre = (i - 1) // 2
+            self._avisar("comparar", i, padre)
             if self._datos[i] < self._datos[padre]:
                 self._datos[i], self._datos[padre] = self._datos[padre], self._datos[i]
+                self._avisar("intercambiar", i, padre)
                 i = padre
             else:
                 break
@@ -100,9 +109,12 @@ class MinHeap:
                 menor = izq
             if der < n and self._datos[der] < self._datos[menor]:
                 menor = der
+            if menor != i or izq < n:
+                self._avisar("comparar", i, menor if menor != i else izq)
             if menor == i:
                 break
             self._datos[i], self._datos[menor] = self._datos[menor], self._datos[i]
+            self._avisar("intercambiar", i, menor)
             i = menor
 
     def como_lista(self):

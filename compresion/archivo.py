@@ -215,6 +215,31 @@ def descomprimir(comprimido: bytes) -> bytes:
     raise ValueError("método desconocido en la cabecera: %d" % metodo)
 
 
+METODOS = [
+    # (nombre, función para comprimir, función para descomprimir, ¿lo hicimos nosotros?)
+    ("RLE por bytes (nuestro)", rle.codificar_bytes, rle.decodificar_bytes, True),
+    ("Huffman (nuestro)", comprimir_huffman, descomprimir, True),
+    ("mini-DEFLATE LZ77+Huffman (nuestro)", comprimir_deflate, descomprimir, True),
+    ("zlib nivel 9 (DEFLATE real)", lambda d: zlib.compress(d, 9), zlib.decompress, False),
+    ("bz2 (BWT + Huffman)", lambda d: bz2.compress(d, 9), bz2.decompress, False),
+    ("lzma / xz (LZ77 + aritmética)", lambda d: lzma.compress(d, preset=9), lzma.decompress, False),
+]
+
+
+def medir(datos: bytes):
+    """Comprime con cada método y verifica que se recupere el original.
+    Devuelve [(nombre, bytes_comprimidos, porcentaje, segundos, ok, propio), ...]."""
+    resultados = []
+    for etiqueta, comp, desc, propio in METODOS:
+        t0 = time.perf_counter()
+        c = comp(datos)
+        t = time.perf_counter() - t0
+        ok = desc(c) == datos
+        pct = 100 * len(c) / len(datos) if datos else 0
+        resultados.append((etiqueta, len(c), pct, t, ok, propio))
+    return resultados
+
+
 def comparar(datos: bytes, nombre="datos"):
     """Tabla comparativa: nuestros métodos vs. los profesionales."""
     from .entropia import entropia
@@ -224,23 +249,9 @@ def comparar(datos: bytes, nombre="datos"):
         print("Entropía (orden 0): %.3f bits/byte -> límite para un compresor que solo"
               " mira frecuencias de bytes: %d bytes" % (h, int(len(datos) * h / 8)))
     print("\n  %-34s %10s %9s %9s  %s" % ("método", "bytes", "% orig.", "tiempo", "¿idéntico?"))
-    filas = [
-        ("RLE por bytes (nuestro)", rle.codificar_bytes, rle.decodificar_bytes),
-        ("Huffman (nuestro)", comprimir_huffman, descomprimir),
-        ("mini-DEFLATE LZ77+Huffman (nuestro)", comprimir_deflate, descomprimir),
-        ("zlib nivel 9 (DEFLATE real)", lambda d: zlib.compress(d, 9), zlib.decompress),
-        ("bz2 (BWT + Huffman)", lambda d: bz2.compress(d, 9), bz2.decompress),
-        ("lzma / xz (LZ77 + aritmética)", lambda d: lzma.compress(d, preset=9), lzma.decompress),
-    ]
-    resultados = []
-    for etiqueta, comp, desc in filas:
-        t0 = time.perf_counter()
-        c = comp(datos)
-        t = time.perf_counter() - t0
-        ok = desc(c) == datos
-        pct = 100 * len(c) / len(datos) if datos else 0
-        resultados.append((etiqueta, len(c), pct, t, ok))
-        print("  %-34s %10d %8.1f%% %8.3fs  %s" % (etiqueta, len(c), pct, t, "sí" if ok else "NO"))
+    resultados = medir(datos)
+    for etiqueta, tam, pct, t, ok, _ in resultados:
+        print("  %-34s %10d %8.1f%% %8.3fs  %s" % (etiqueta, tam, pct, t, "sí" if ok else "NO"))
     return resultados
 
 

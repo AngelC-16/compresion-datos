@@ -11,13 +11,29 @@ español y con los **mismos ejemplos de las diapositivas**.
 
 ## Cómo ejecutarlo
 
-Solo hace falta **Python 3.8+** (no se instala nada).
+Solo hace falta **Python 3.8+** (no se instala nada, no necesita internet).
+
+### Interfaz visual (recomendada para presentar)
+
+```bash
+python app.py
+```
+
+Se abre el navegador en `http://127.0.0.1:8000`. Cada tema tiene un **reproductor paso a paso**
+(⏮ ◀ ▶ ⏭) que muestra lo que hace el algoritmo: el árbol de Huffman armándose con la cola de
+prioridad, la ventana de LZ77 resaltando de dónde copia, el zoom de la codificación aritmética,
+lo que le pasa a un bloque 8×8 de JPEG, el espectro de audio con la curva de enmascaramiento (y
+se puede escuchar), los vectores de movimiento del video, y la comparación con ZIP/bz2/xz
+arrastrando cualquier archivo. Al final de cada sección, «Ver el código Python» muestra la función
+real que hace el cálculo. Para cerrarla: `Ctrl + C` en la terminal.
+
+### En la consola
 
 ```bash
 python demo.py              # menú interactivo
 python demo.py todo         # todo, en el orden de la presentación
 python demo.py huffman      # una sección
-python -m unittest discover -s tests -v    # 22 pruebas automáticas
+python -m unittest discover -s tests -v    # 25 pruebas automáticas
 ```
 
 Comprimir un archivo propio:
@@ -50,13 +66,16 @@ python -m compresion.archivo comparar     mi_archivo.txt
 
 ```
 compresion-datos/
-├── demo.py                 # menú: ejecuta las demostraciones en orden
+├── app.py                  # interfaz visual: servidor local + navegador
+├── web/                    # la página (HTML, CSS y JS que solo DIBUJA)
+├── demo.py                 # versión de consola: ejecuta las demostraciones en orden
 ├── DOCUMENTO.md            # explicación detallada de todo
 ├── compresion/             # un módulo por tema
 │   ├── entropia.py   adaptativa.py   rle.py   estructuras.py   huffman.py
 │   ├── lz77.py   lzw.py   bwt.py   aritmetica.py
 │   ├── jpeg_dct.py   audio.py   video.py   imagen_bmp.py
-│   └── archivo.py          # compresor de archivos real
+│   ├── archivo.py          # compresor de archivos real
+│   └── api.py              # empaqueta los pasos de cada algoritmo para la interfaz
 ├── ejemplos/guion.txt      # texto de prueba (el guion de la exposición)
 ├── tests/test_compresion.py
 └── salidas/                # (se crea al ejecutar jpeg/audio) imágenes y sonidos

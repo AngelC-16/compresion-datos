@@ -34,13 +34,14 @@ def fondo(ancho, alto):
     return [[rnd.randint(40, 90) for _ in range(ancho)] for _ in range(alto)]
 
 
-def generar_video(cuadros=6, ancho=32, alto=32):
-    """Un cuadrado brillante de 8×8 que se mueve 2 px a la derecha y 1 px
-    hacia abajo por cuadro, sobre un fondo fijo."""
+def generar_video(cuadros=6, ancho=32, alto=32, dx=2, dy=1, inicio=(4, 6)):
+    """Un cuadrado brillante de 8×8 que se mueve (dx, dy) píxeles por cuadro
+    (por defecto 2 a la derecha y 1 hacia abajo), sobre un fondo fijo."""
     video = []
     for t in range(cuadros):
         img = fondo(ancho, alto)
-        x0, y0 = 4 + 2 * t, 6 + t
+        x0 = max(0, min(ancho - 8, inicio[0] + dx * t))
+        y0 = max(0, min(alto - 8, inicio[1] + dy * t))
         for y in range(y0, y0 + 8):
             for x in range(x0, x0 + 8):
                 img[y][x] = 230

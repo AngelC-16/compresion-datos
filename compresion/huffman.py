@@ -40,11 +40,13 @@ from .estructuras import MinHeap, NodoHuffman
 # ---------------------------------------------------------------------------
 # 1-4. Construcción del árbol
 # ---------------------------------------------------------------------------
-def construir_arbol(frecuencias, traza=None):
+def construir_arbol(frecuencias, traza=None, fusiones=None):
     """Construye el árbol de Huffman a partir de {simbolo: frecuencia}.
 
     `traza` (opcional): lista donde se anotan los pasos, para explicar el
     algoritmo en la demo.
+    `fusiones` (opcional): lista donde se anotan los objetos (a, b, padre) de
+    cada fusión; la interfaz visual la usa para dibujar el bosque paso a paso.
 
     Desempate: en la cola guardamos tuplas (frecuencia, -orden, nodo). Si dos
     nodos tienen la misma frecuencia, sale primero el creado MÁS RECIENTEMENTE.
@@ -70,6 +72,8 @@ def construir_arbol(frecuencias, traza=None):
         f1, _, a = cola.extraer_minimo()     # el menor     -> rama izquierda (0)
         f2, _, b = cola.extraer_minimo()     # el siguiente -> rama derecha  (1)
         padre = NodoHuffman(f1 + f2, izq=a, der=b)
+        if fusiones is not None:
+            fusiones.append((a, b, padre))
         if traza is not None:
             traza.append("fusionar %s + %s -> nodo de %d"
                          % (_describir(a), _describir(b), f1 + f2))
