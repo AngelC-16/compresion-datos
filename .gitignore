@@ -3,5 +3,6 @@ __pycache__/
 salidas/
 *.edd
 guion_recuperado.txt
-.vscode/
+.vscode/*
+!.vscode/launch.json
 .idea/

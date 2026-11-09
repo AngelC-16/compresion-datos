@@ -8,6 +8,19 @@
   <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
+  <!-- Aviso visible si la página se abrió SIN el servidor de Python (doble clic en
+       este archivo, vista previa de VS Code, Live Server...). main.js lo quita
+       apenas confirma que el servidor responde. -->
+  <div id="aviso-servidor" style="background:#d64545;color:#fff;padding:18px 24px;font:16px/1.5 system-ui,sans-serif">
+    <b>⚠ Esta página no se abre así.</b> Necesita el servidor de Python para hacer los cálculos.<br>
+    Ciérrela y, en la carpeta del proyecto, haga <b>una</b> de estas:
+    <ul style="margin:6px 0 0">
+      <li>Doble clic en <b>abrir_interfaz.bat</b></li>
+      <li>En una terminal: <code style="background:rgba(0,0,0,.25);padding:2px 8px;border-radius:6px">python app.py</code></li>
+      <li>En VS Code: abra la carpeta <b>compresion-datos</b> y presione <b>F5</b> → «Interfaz visual (app.py)»</li>
+    </ul>
+    Se abrirá sola en <b>http://127.0.0.1:8000</b>. No cierre la ventana negra/terminal mientras la usa.
+  </div>
   <div class="app">
     <aside class="lateral">
       <div class="marca">

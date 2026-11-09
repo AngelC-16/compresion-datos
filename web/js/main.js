@@ -67,7 +67,18 @@ function tema(nuevo) {
   document.getElementById("boton-tema").textContent = nuevo === "oscuro" ? "☀️ Tema claro" : "🌙 Tema oscuro";
 }
 
+/** Si la página se abrió sin el servidor Python (doble clic en index.html,
+ *  Live Server, etc.), los cálculos no funcionan: se avisa cómo abrirla bien. */
+async function verificarServidor() {
+  let ok = false;
+  if (location.protocol.startsWith("http")) {
+    try { ok = (await fetch("/api/rle", { method: "POST", body: "{}" })).ok; } catch (e) { ok = false; }
+  }
+  if (ok) document.getElementById("aviso-servidor")?.remove();   // todo bien: quitar el aviso
+}
+
 window.addEventListener("DOMContentLoaded", () => {
+  verificarServidor();
   let guardado = null;
   try { guardado = localStorage.getItem("tema"); } catch (e) { /* nada */ }
   tema(guardado || "claro");

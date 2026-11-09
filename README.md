@@ -15,11 +15,25 @@ Solo hace falta **Python 3.8+** (no se instala nada, no necesita internet).
 
 ### Interfaz visual (recomendada para presentar)
 
-```bash
-python app.py
-```
+**1. Descargar el proyecto** (una sola vez): con `git clone https://github.com/AngelC-16/compresion-datos.git`
+o, en GitHub, botón verde **Code → Download ZIP** y descomprimir.
 
-Se abre el navegador en `http://127.0.0.1:8000`. Cada tema tiene un **reproductor paso a paso**
+**2. Abrir la interfaz**, de cualquiera de estas formas:
+
+| Forma | Cómo |
+|---|---|
+| Doble clic (Windows) | Doble clic en **`abrir_interfaz.bat`** |
+| VS Code | *File → Open Folder* → la carpeta **`compresion-datos`** (no una carpeta de más arriba) → **F5** → «Interfaz visual (app.py)». También sirve abrir `app.py` y darle ▶ |
+| Terminal | Dentro de la carpeta: `python app.py` |
+
+Se abre sola en el navegador en `http://127.0.0.1:8000` (si no, copie la dirección que aparece en
+la terminal). **No cierre la terminal o ventana negra mientras la usa**; para cerrarla: `Ctrl + C`.
+
+> ⚠ **No abra `web/index.html` con doble clic ni con la vista previa de VS Code / Live Server**:
+> la página necesita el servidor de Python para calcular. Si lo hace, verá un aviso rojo con
+> estas mismas instrucciones.
+
+Cada tema tiene un **reproductor paso a paso**
 (⏮ ◀ ▶ ⏭) que muestra lo que hace el algoritmo: el árbol de Huffman armándose con la cola de
 prioridad, la ventana de LZ77 resaltando de dónde copia, el zoom de la codificación aritmética,
 lo que le pasa a un bloque 8×8 de JPEG, el espectro de audio con la curva de enmascaramiento (y

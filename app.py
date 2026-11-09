@@ -62,11 +62,37 @@ class Manejador(SimpleHTTPRequestHandler):
         pass                                          # consola limpia
 
 
+class Servidor(ThreadingHTTPServer):
+    # En Windows, "reutilizar dirección" deja que DOS programas usen el mismo
+    # puerto a la vez (y el navegador termina hablando con el equivocado).
+    # Lo desactivamos para que, si el puerto está ocupado, se use el siguiente.
+    allow_reuse_address = os.name != "nt"
+    daemon_threads = True
+
+
+def abrir_navegador(url):
+    """Abre el navegador; si `webbrowser` falla, usa el método de Windows."""
+    try:
+        if webbrowser.open(url):
+            return
+    except Exception:
+        pass
+    if os.name == "nt":
+        try:
+            os.startfile(url)
+        except OSError:
+            pass
+
+
 def main():
+    try:                                              # tildes bien en la consola de Windows
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
     servidor = None
     for puerto in range(PUERTO, PUERTO + 20):        # si el puerto está ocupado, prueba el siguiente
         try:
-            servidor = ThreadingHTTPServer(("127.0.0.1", puerto), Manejador)
+            servidor = Servidor(("127.0.0.1", puerto), Manejador)
             break
         except OSError:
             continue
@@ -74,9 +100,14 @@ def main():
         print("No se encontró un puerto libre.")
         return 1
     url = "http://127.0.0.1:%d/" % servidor.server_address[1]
-    print("Interfaz visual lista en %s  (Ctrl + C para salir)" % url)
+    print("=" * 64)
+    print("  INTERFAZ VISUAL LISTA")
+    print("  Abra en el navegador:  %s" % url)
+    print("  (Se abre sola; si no, copie esa dirección en Chrome o Edge.)")
+    print("  NO cierre esta ventana mientras la usa. Para salir: Ctrl + C")
+    print("=" * 64, flush=True)
     if "--sin-navegador" not in sys.argv:
-        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+        threading.Timer(0.6, abrir_navegador, args=(url,)).start()
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:
