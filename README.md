@@ -8,6 +8,7 @@ Cada algoritmo de la presentación está implementado **desde cero en Python**, 
 español y con los **mismos ejemplos de las diapositivas**.
 
 📄 **Explicación detallada de todo: [DOCUMENTO.md](DOCUMENTO.md)**
+🧠 **El código, función por función y línea por línea: [EXPLICACION_DEL_CODIGO.md](EXPLICACION_DEL_CODIGO.md)**
 
 ## Cómo ejecutarlo
 
