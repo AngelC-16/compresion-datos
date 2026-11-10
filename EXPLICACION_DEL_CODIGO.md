@@ -29,6 +29,7 @@ Cada algoritmo sigue el mismo orden:
 
 ## Índice
 
+- [Resumen general del proyecto](#resumen-general-del-proyecto)
 - [Parte 0 · Conceptos previos](#parte-0--conceptos-previos)
 - [Parte 1 · `entropia.py` — el límite de Shannon](#parte-1--entropiapy--el-límite-de-shannon)
 - [Parte 2 · `adaptativa.py` — estático vs. adaptativo](#parte-2--adaptativapy--estático-vs-adaptativo)
@@ -47,6 +48,48 @@ Cada algoritmo sigue el mismo orden:
 - [Parte 15 · Resumen de complejidades](#parte-15--resumen-de-complejidades)
 - [Parte 16 · Glosario de Python usado](#parte-16--glosario-de-python-usado)
 - [Parte 17 · Preguntas que nos pueden hacer](#parte-17--preguntas-que-nos-pueden-hacer)
+
+---
+
+## Resumen general del proyecto
+
+> ### 📌 Todo el proyecto en pocas palabras
+> El proyecto implementa **desde cero, en Python**, cada técnica de la presentación, y las
+> organiza igual que las diapositivas:
+>
+> 1. **Medir** cuánto se puede comprimir (`entropia.py`) y entender la diferencia entre modelos
+>    fijos y que aprenden (`adaptativa.py`).
+> 2. **Comprimir sin pérdida** de cuatro maneras distintas:
+>    - contando **rachas** (`rle.py`);
+>    - dando **códigos cortos a lo frecuente** con un árbol y una cola de prioridad (`huffman.py`
+>      usando `estructuras.py`);
+>    - **apuntando a lo que ya apareció**, con una tabla hash (`lz77.py`) o con un diccionario
+>      (`lzw.py`);
+>    - **acercándose al límite** reordenando el texto (`bwt.py`) o convirtiéndolo en un número
+>      (`aritmetica.py`).
+> 3. **Comprimir con pérdida** borrando lo que no se percibe: detalles finos de una imagen
+>    (`jpeg_dct.py`), sonidos tapados por otros (`audio.py`) y lo que no cambia entre cuadros de un
+>    video (`video.py`).
+> 4. **Juntarlo todo** en un compresor de archivos real (`archivo.py`): LZ77 + Huffman, como el
+>    ZIP, comparado contra los compresores profesionales.
+>
+> Todos los métodos sin pérdida cumplen la misma regla, que verifican las pruebas:
+> **descomprimir lo comprimido devuelve exactamente lo original**. Y debajo de casi todos están
+> las tres estructuras de datos del curso: **tabla hash** (contar, buscar repeticiones),
+> **cola de prioridad** (construir el árbol de Huffman) y **árbol binario** (guardar los códigos).
+
+```
+                    ┌──────────────────────────┐
+  datos  ──────────►│  MODELO: ¿qué es probable?│  frecuencias · ventana · diccionario
+                    └────────────┬─────────────┘
+                                 ▼
+                    ┌──────────────────────────┐
+                    │ CODIFICADOR: escribir    │  Huffman · (retrocede, copia) · número [0,1)
+                    │ con menos bits           │
+                    └────────────┬─────────────┘
+                                 ▼
+                         datos comprimidos ── descomprimir ──► datos originales (sin pérdida)
+```
 
 ---
 
@@ -99,6 +142,15 @@ probables hacen falta log2(8) = 3 bits. Un evento de probabilidad p «vale» −
 
 ## Parte 1 · `entropia.py` — el límite de Shannon
 
+> ### 📌 En pocas palabras
+> Este módulo **mide cuánto se puede comprimir** un mensaje como máximo sin perder nada.
+> Hace tres cosas en cadena: **cuenta** cuántas veces aparece cada símbolo (con una tabla
+> hash), convierte esos conteos en **probabilidades** y aplica la **fórmula de Shannon**
+> H = −Σ p·log2 p. El resultado (H) son los bits por símbolo que hacen falta como mínimo; si lo
+> multiplicamos por la cantidad de símbolos, tenemos el tamaño mínimo del mensaje. Lo que sobra
+> respecto a guardarlo en ASCII es la **redundancia**. No comprime nada: sirve de **regla** para
+> medir a los demás algoritmos.
+
 ### 1.1 La idea
 
 Antes de comprimir conviene saber **cuánto se puede comprimir como máximo**. Claude Shannon (1948)
@@ -115,6 +167,8 @@ $$H = -\sum_x p(x)\,\log_2 p(x)$$
 - **Redundancia** = lo que sobra = `1 − (bits mínimos / bits usados)`.
 
 ### 1.3 Código: contar frecuencias
+
+> **En general:** Cuenta cuántas veces aparece cada símbolo y devuelve un diccionario `{símbolo: veces}`.
 
 `compresion/entropia.py` → `frecuencias`
 
@@ -137,6 +191,8 @@ $$H = -\sum_x p(x)\,\log_2 p(x)$$
 
 ### 1.4 Código: probabilidades
 
+> **En general:** Convierte esos conteos en probabilidades: divide cada conteo entre el total.
+
 `compresion/entropia.py` → `probabilidades`
 
 ```python
@@ -152,6 +208,8 @@ $$H = -\sum_x p(x)\,\log_2 p(x)$$
   siempre da 1.
 
 ### 1.5 Código: la fórmula
+
+> **En general:** Aplica la fórmula de Shannon a una lista de probabilidades y devuelve H en bits por símbolo.
 
 `compresion/entropia.py` → `entropia_de_distribucion`
 
@@ -176,6 +234,8 @@ $$H = -\sum_x p(x)\,\log_2 p(x)$$
 
 ### 1.6 Código: entropía de unos datos e información
 
+> **En general:** Atajo: de unos datos calcula directamente su entropía (contar → probabilidades → fórmula).
+
 `compresion/entropia.py` → `entropia`
 
 ```python
@@ -185,6 +245,8 @@ $$H = -\sum_x p(x)\,\log_2 p(x)$$
 4 │         return 0.0
 5 │     return entropia_de_distribucion(probabilidades(datos))
 ```
+
+> **En general:** Dice cuántos bits «vale» (cuánto sorprende) un evento de probabilidad p.
 
 `compresion/entropia.py` → `informacion`
 
@@ -199,6 +261,8 @@ $$H = -\sum_x p(x)\,\log_2 p(x)$$
 - `informacion`: la sorpresa de un solo evento.
 
 ### 1.7 Código: análisis completo
+
+> **En general:** Hace el informe completo de unos datos: entropía, bits originales, bits mínimos y redundancia.
 
 `compresion/entropia.py` → `analisis`
 
@@ -280,6 +344,14 @@ Los algoritmos que miran **contexto** (LZ77, LZW, BWT) aprovechan el orden y baj
 
 ## Parte 2 · `adaptativa.py` — estático vs. adaptativo
 
+> ### 📌 En pocas palabras
+> Compara dos formas de «conocer» los datos. El modelo **estático** cuenta todo el archivo
+> primero, usa siempre la misma tabla y tiene que enviarla. El modelo **adaptativo** empieza sin
+> saber nada, va contando mientras lee y no envía tabla, porque el decodificador puede repetir los
+> mismos pasos. Para comparar sin escribir bits reales, cada símbolo «cuesta» −log2 p bits. Cuando
+> el contenido **cambia a mitad de camino**, el adaptativo (sobre todo con memoria corta) gasta
+> mucho menos.
+
 ### 2.1 La idea
 
 Diapositiva 6: un modelo **estático** cuenta todo primero (dos pasadas) y usa la misma tabla para
@@ -288,6 +360,8 @@ forma justa, este módulo no genera bits reales: calcula el **costo ideal** `−
 símbolo, que es lo que gastaría un codificador perfecto (el aritmético se acerca mucho).
 
 ### 2.2 Código: estático
+
+> **En general:** Calcula los bits que gastaría un modelo con tabla fija (contando todo el texto antes), más el costo de enviar la tabla.
 
 `compresion/adaptativa.py` → `costo_estatico`
 
@@ -309,6 +383,8 @@ símbolo, que es lo que gastaría un codificador perfecto (el aritmético se ace
 - **L8** devuelve los dos por separado para poder mostrarlos.
 
 ### 2.3 Código: adaptativo
+
+> **En general:** Calcula los bits que gastaría un modelo que aprende mientras lee: cada símbolo se paga con la probabilidad que el modelo tenía en ese momento, y después se actualiza el conteo. Opcionalmente olvida lo viejo (memoria).
 
 `compresion/adaptativa.py` → `costo_adaptativo`
 
@@ -384,11 +460,20 @@ pasos y la B pasa enseguida a costar casi 0. Sin memoria, recuerda las 50 A para
 
 ## Parte 3 · `rle.py` — Run-Length Encoding
 
+> ### 📌 En pocas palabras
+> RLE recorre los datos **una sola vez** buscando **rachas** de símbolos iguales seguidos, y por
+> cada racha guarda un par **(cantidad, símbolo)**. Para descomprimir, repite cada símbolo esa
+> cantidad de veces. Es el compresor sin pérdida más simple y rápido (O(n)), pero solo sirve si hay
+> rachas largas: con datos sin repeticiones el resultado **ocupa el doble**. Hay una versión para
+> texto y otra para bytes (archivos), donde cada racha ocupa 2 bytes.
+
 ### 3.1 La idea
 
 `AAAAABBBCC` → `(5,A) (3,B) (2,C)`: 10 letras → 6 símbolos. Funciona con **rachas** largas.
 
 ### 3.2 Código: codificar
+
+> **En general:** Recorre los datos y convierte cada racha de símbolos iguales en un par `(cantidad, símbolo)`.
 
 `compresion/rle.py` → `codificar`
 
@@ -433,6 +518,8 @@ una sola vez en total. Memoria: O(número de rachas).
 
 ### 3.3 Código: decodificar
 
+> **En general:** Hace lo contrario: repite cada símbolo la cantidad indicada y vuelve a armar los datos.
+
 `compresion/rle.py` → `decodificar`
 
 ```python
@@ -454,6 +541,8 @@ una sola vez en total. Memoria: O(número de rachas).
 
 ### 3.4 Código: utilidades
 
+> **En general:** Muestra las rachas en forma compacta, como `5A3B2C`.
+
 `compresion/rle.py` → `a_texto`
 
 ```python
@@ -461,6 +550,8 @@ una sola vez en total. Memoria: O(número de rachas).
 2 │     """Representación compacta tipo '5A3B2C' (solo para mostrar)."""
 3 │     return "".join("%d%s" % (cantidad, simbolo) for cantidad, simbolo in rachas)
 ```
+
+> **En general:** Cuenta cuánto ocupa el resultado: 2 casillas por racha.
 
 `compresion/rle.py` → `tamano_en_simbolos`
 
@@ -474,6 +565,8 @@ una sola vez en total. Memoria: O(número de rachas).
   el símbolo): es la medida que usa la diapositiva («6 símbolos»).
 
 ### 3.5 Código: versión por bytes (para archivos)
+
+> **En general:** La misma idea de `codificar`, pero para archivos: cada racha se guarda en 2 bytes `[cantidad, byte]`, con un máximo de 255 por racha.
 
 `compresion/rle.py` → `codificar_bytes`
 
@@ -490,6 +583,8 @@ una sola vez en total. Memoria: O(número de rachas).
 10 │         i += cantidad
 11 │     return bytes(salida)
 ```
+
+> **En general:** Lee los bytes de 2 en 2 y repite cada byte la cantidad indicada.
 
 `compresion/rle.py` → `decodificar_bytes`
 
@@ -525,6 +620,14 @@ ajedrez → crece.
 
 ## Parte 4 · `estructuras.py` — min-heap y nodo del árbol
 
+> ### 📌 En pocas palabras
+> Aquí están las dos estructuras de datos que usa Huffman. La **cola de prioridad** (`MinHeap`) es
+> un árbol binario completo guardado en una **lista**, donde cada padre es menor o igual que sus
+> hijos; así el mínimo siempre está en la posición 0. Para **insertar**, el elemento entra al final
+> y **sube** cambiándose con su padre; para **extraer el mínimo**, el último pasa a la raíz y
+> **baja** cambiándose con su hijo menor. Ambas cosas cuestan O(log n). El **`NodoHuffman`** es el
+> nodo del árbol de Huffman: una hoja (con su letra) o un nodo interno (con dos hijos).
+
 ### 4.1 La idea
 
 Huffman necesita repetir muchas veces: «dame los **dos** de menor frecuencia» y «guarda este
@@ -559,6 +662,8 @@ lista:  [ 1,  3,  2,  7,  4,  9,  5 ]
   niveles!
 
 ### 4.3 Código completo de `MinHeap`
+
+> **En general:** La cola de prioridad completa: guarda los elementos en una lista organizada como árbol, entrega siempre el menor y permite insertar y extraer en O(log n).
 
 `compresion/estructuras.py` → `MinHeap`
 
@@ -696,6 +801,8 @@ Devuelve **1**. Si se siguen extrayendo salen **1, 2, 3, 4, 5, 7, 9**: ordenados
 
 ### 4.8 `NodoHuffman`
 
+> **En general:** El nodo del árbol de Huffman: guarda una frecuencia y, si es hoja, su símbolo; si es interno, sus dos hijos.
+
 `compresion/estructuras.py` → `NodoHuffman`
 
 ```python
@@ -736,6 +843,15 @@ Devuelve **1**. Si se siguen extrayendo salen **1, 2, 3, 4, 5, 7, 9**: ordenados
 
 ## Parte 5 · `huffman.py` — codificación Huffman
 
+> ### 📌 En pocas palabras
+> El módulo construye el código de Huffman en cuatro pasos: (1) **cuenta** las frecuencias; (2)
+> mete una hoja por símbolo en la **cola de prioridad** y repite «**saca los dos menores, únelos
+> en un padre con la suma, mete el padre**» hasta que queda un solo árbol; (3) **recorre el
+> árbol** para leer los códigos (izquierda = 0, derecha = 1); y (4) los convierte en **códigos
+> canónicos**, que solo necesitan las longitudes para reconstruirse. Para comprimir, cambia cada
+> letra por su código; para descomprimir, lee bits hasta formar un código (o baja por el árbol).
+> Funciona porque los códigos son **libres de prefijo**.
+
 ### 5.1 La idea
 
 Códigos **cortos** para lo frecuente, **largos** para lo raro, y libres de prefijo. David Huffman
@@ -750,6 +866,8 @@ de ese subárbol; por eso conviene que las fusiones «caras» (las primeras, que
 hagan con lo menos frecuente.
 
 ### 5.3 Código: construir el árbol
+
+> **En general:** Construye el árbol de Huffman: mete una hoja por símbolo en la cola de prioridad y fusiona los dos menores una y otra vez hasta que queda la raíz.
 
 `compresion/huffman.py` → `construir_arbol`
 
@@ -856,6 +974,8 @@ O(log k) ⇒ **O(k log k)**. (Más O(n) de contar las frecuencias antes.)
 
 ### 5.5 Código: generar los códigos
 
+> **En general:** Recorre el árbol desde la raíz y anota el camino hasta cada hoja: ese camino (0 = izquierda, 1 = derecha) es el código de la letra.
+
 `compresion/huffman.py` → `generar_codigos`
 
 ```python
@@ -888,6 +1008,8 @@ O(log k) ⇒ **O(k log k)**. (Más O(n) de contar las frecuencias antes.)
 Resultado: **A=0, B=10, R=111, D=1100, C=1101**. Costo: O(k) (visita cada nodo una vez).
 
 ### 5.6 Código: códigos canónicos
+
+> **En general:** Con solo la longitud de cada código, genera códigos «canónicos» ordenados (los de la diapositiva), que es lo que usan ZIP, PNG y JPEG.
 
 `compresion/huffman.py` → `codigos_canonicos`
 
@@ -938,6 +1060,8 @@ D=1100)? Porque cuando hay empates existen **varios árboles óptimos**; lo que 
 
 ### 5.7 Código: codificar
 
+> **En general:** Comprime: cambia cada símbolo por su código y los pega en una sola cadena de bits.
+
 `compresion/huffman.py` → `codificar`
 
 ```python
@@ -963,6 +1087,8 @@ Cuenta: 5·1 (A) + 2·2 (B) + 2·3 (R) + 1·4 (C) + 1·4 (D) = 5 + 4 + 6 + 4 + 4
 Comparación: ASCII 88 · Huffman 23 · Shannon 22.4. Huffman = 2.091 bits/símbolo vs. H = 2.040.
 
 ### 5.8 Código: decodificar con tabla
+
+> **En general:** Descomprime leyendo bits uno por uno hasta que formen un código conocido; entonces escribe la letra y empieza de nuevo.
 
 `compresion/huffman.py` → `decodificar`
 
@@ -994,6 +1120,8 @@ Comparación: ASCII 88 · Huffman 23 · Shannon 22.4. Huffman = 2.091 bits/símb
 
 ### 5.9 Código: decodificar con el árbol
 
+> **En general:** Descomprime bajando por el árbol con cada bit hasta llegar a una hoja.
+
 `compresion/huffman.py` → `decodificar_con_arbol`
 
 ```python
@@ -1015,6 +1143,8 @@ Comparación: ASCII 88 · Huffman 23 · Shannon 22.4. Huffman = 2.091 bits/símb
 - Con los códigos del árbol: `1100` → raíz → 1 → 1 → 0 → 0 → hoja D.
 
 ### 5.10 Código: verificar «libre de prefijo»
+
+> **En general:** Verifica que ningún código sea el comienzo de otro (la propiedad que permite decodificar sin ambigüedad).
 
 `compresion/huffman.py` → `es_libre_de_prefijo`
 
@@ -1043,6 +1173,14 @@ contra todos (O(k²)).
 
 ## Parte 6 · `lz77.py` — ventana deslizante y tabla hash
 
+> ### 📌 En pocas palabras
+> LZ77 recorre los datos y en cada posición se pregunta «**¿esto ya lo vi?**». Para responder
+> rápido usa una **tabla hash** que guarda, por cada grupo de 3 símbolos, las posiciones donde
+> apareció. Si encuentra una coincidencia de 3 o más símbolos, emite una **referencia
+> (retrocede, copia)** y salta esos símbolos; si no, emite el símbolo tal cual (un **literal**). Para
+> descomprimir no necesita la tabla: solo copia desde lo que ya reconstruyó. Junto con Huffman forma
+> **DEFLATE** (ZIP, gzip, PNG).
+
 ### 6.1 La idea
 
 Si lo que viene ya apareció, se guarda **(retrocede `d`, copia `l`)**. Abraham Lempel y Jacob Ziv,
@@ -1066,6 +1204,8 @@ MAX_CANDIDATOS = 64        # cuántas posiciones previas revisar como máximo
 ```
 
 ### 6.3 Código: el codificador
+
+> **En general:** Comprime: en cada posición busca en la tabla hash si las próximas 3 letras ya aparecieron, mide la coincidencia más larga y emite `(retrocede, copia)` o la letra suelta.
 
 `compresion/lz77.py` → `codificar`
 
@@ -1179,6 +1319,8 @@ hace el trabajo de RLE.
 
 ### 6.6 Código: decodificar
 
+> **En general:** Descomprime: escribe los literales y, para cada referencia, copia letra por letra desde lo que ya reconstruyó.
+
 `compresion/lz77.py` → `decodificar`
 
 ```python
@@ -1236,6 +1378,13 @@ ventana. Comparaciones de símbolos:
 
 ## Parte 7 · `lzw.py` — diccionario dinámico
 
+> ### 📌 En pocas palabras
+> LZW arma un **diccionario** de secuencias mientras lee. Empieza con las letras sueltas y va
+> alargando la secuencia actual mientras siga estando en el diccionario; cuando ya no está, emite el
+> **número** de la última secuencia conocida y **agrega la nueva** al diccionario. Así, con el
+> tiempo, un solo número reemplaza varias letras. El diccionario **no se envía**: el decodificador
+> lo reconstruye solo, con un caso especial cuando recibe un número que todavía no conoce.
+
 ### 7.1 La idea
 
 LZ78/LZW (Lempel, Ziv, Welch, 1984): en vez de apuntar hacia atrás, se construye un
@@ -1243,6 +1392,8 @@ LZ78/LZW (Lempel, Ziv, Welch, 1984): en vez de apuntar hacia atrás, se construy
 «Organización de las Naciones Unidas». Se usa en GIF y TIFF.
 
 ### 7.2 Código: codificar
+
+> **En general:** Comprime: alarga la secuencia mientras esté en el diccionario; cuando no, emite su número y agrega la secuencia nueva al diccionario.
 
 `compresion/lzw.py` → `codificar`
 
@@ -1313,6 +1464,8 @@ Diccionario inicial: B=0, E=1, N=2, O=3, R=4, T=5.
 
 ### 7.4 Código: decodificar
 
+> **En general:** Descomprime: traduce cada número a su secuencia y reconstruye el mismo diccionario que tenía el codificador.
+
 `compresion/lzw.py` → `decodificar`
 
 ```python
@@ -1355,6 +1508,8 @@ el 4, el diccionario solo llega hasta 3 → `entrada = w + w[0] = "AB" + "A" = "
 
 ### 7.5 Código: tamaño en bits
 
+> **En general:** Calcula cuántos bits ocupan los números emitidos, usando los bits justos para el tamaño del diccionario en cada momento (como GIF).
+
 `compresion/lzw.py` → `bits_necesarios`
 
 ```python
@@ -1382,12 +1537,22 @@ entradas).
 
 ## Parte 8 · `bwt.py` — Burrows-Wheeler
 
+> ### 📌 En pocas palabras
+> La BWT **no comprime**: **reordena** el texto para que las letras iguales queden juntas. Agrega
+> un `$` al final, escribe todas las **rotaciones**, las **ordena** y se queda con la **última
+> columna**. Lo sorprendente es que se puede **deshacer** solo con esa columna, usando la
+> propiedad LF (la k-ésima «A» de la última columna es la k-ésima «A» de la primera). Después de la
+> BWT, el *move-to-front* convierte las letras repetidas en muchos ceros, que RLE y Huffman
+> comprimen muy bien. Es la base de bzip2.
+
 ### 8.1 La idea
 
 La BWT (Burrows y Wheeler, 1994) **no comprime**: reordena el texto para que las letras iguales
 queden juntas, y así RLE + Huffman comprimen mejor. Es reversible. Base de **bzip2**.
 
 ### 8.2 Código: transformar
+
+> **En general:** Escribe todas las rotaciones del texto (con `$` al final) y las ordena alfabéticamente.
 
 `compresion/bwt.py` → `rotaciones_ordenadas`
 
@@ -1396,6 +1561,8 @@ queden juntas, y así RLE + Huffman comprimen mejor. Es reversible. Base de **bz
 2 │     t = texto + FIN
 3 │     return sorted(t[i:] + t[:i] for i in range(len(t)))
 ```
+
+> **En general:** La BWT: toma la última letra de cada rotación ordenada.
 
 `compresion/bwt.py` → `transformar`
 
@@ -1432,6 +1599,8 @@ anterior a ese contexto suele repetirse (aquí N, N).
 O(n) cada una ⇒ O(n² log n). bzip2 usa *arreglos de sufijos*: O(n).
 
 ### 8.3 Código: la inversa
+
+> **En general:** Deshace la BWT: con la última columna reconstruye el texto original saltando de fila en fila (propiedad LF).
 
 `compresion/bwt.py` → `inversa`
 
@@ -1511,6 +1680,8 @@ Leído: `A N A N A B $` → invertido `$BANANA` → sin `$`: **BANANA** ✔.
 
 ### 8.4 Código: move-to-front
 
+> **En general:** Cambia cada letra por su posición en una lista que se reordena (la última usada pasa al frente). Las letras repetidas dan 0.
+
 `compresion/bwt.py` → `mover_al_frente`
 
 ```python
@@ -1538,6 +1709,14 @@ Leído: `A N A N A B $` → invertido `$BANANA` → sin `$`: **BANANA** ✔.
 
 ## Parte 9 · `aritmetica.py` — codificación aritmética
 
+> ### 📌 En pocas palabras
+> La codificación aritmética convierte **todo el mensaje en un solo número** entre 0 y 1. Primero
+> divide [0, 1) en tramos según la probabilidad de cada símbolo. Por cada símbolo leído hace
+> **zoom** dentro de su tramo, y el intervalo se va achicando. Al final busca el número con
+> **menos bits** dentro del intervalo final: esos bits son el mensaje comprimido. Para descomprimir
+> hace los mismos zooms viendo en qué tramo cae el número. Usa fracciones exactas (`Fraction`) para
+> que no haya errores de redondeo, y se acerca más a la entropía que Huffman.
+
 ### 9.1 La idea
 
 Todo el mensaje se convierte en **un solo número** dentro de [0, 1). Cada símbolo hace «zoom»
@@ -1545,6 +1724,8 @@ dentro de su tramo. Usa «fracciones de bit», por eso se acerca más a la entro
 usa en JPEG2000 y en H.264 (CABAC).
 
 ### 9.2 Código: el modelo
+
+> **En general:** Divide el intervalo [0, 1) en tramos, uno por símbolo, proporcionales a su probabilidad.
 
 `compresion/aritmetica.py` → `modelo`
 
@@ -1568,6 +1749,8 @@ usa en JPEG2000 y en H.264 (CABAC).
 - `AABAC` → A: [0, 3/5) · B: [3/5, 4/5) · C: [4/5, 1).
 
 ### 9.3 Código: codificar
+
+> **En general:** Comprime: con cada símbolo hace zoom dentro de su tramo y al final devuelve el número binario más corto dentro del intervalo.
 
 `compresion/aritmetica.py` → `codificar`
 
@@ -1607,6 +1790,8 @@ necesarios ≈ −log2(ancho) = Σ −log2 p = **la entropía del mensaje** (6.8
 
 ### 9.4 Código: el número más corto
 
+> **En general:** Busca el número con menos dígitos binarios que cae dentro del intervalo final, probando con 1, 2, 3… bits.
+
 `compresion/aritmetica.py` → `_binario_mas_corto`
 
 ```python
@@ -1639,6 +1824,8 @@ Traza para [0.25056, 0.25920):
 **7 bits** para `AABAC` (la entropía decía 6.86).
 
 ### 9.5 Código: decodificar
+
+> **En general:** Descomprime: ve en qué tramo cae el número, escribe ese símbolo y hace el mismo zoom, tantas veces como símbolos tenía el mensaje.
 
 `compresion/aritmetica.py` → `decodificar`
 
@@ -1685,6 +1872,15 @@ que avanzan: O(n).
 
 ## Parte 10 · `jpeg_dct.py` — imágenes con pérdida
 
+> ### 📌 En pocas palabras
+> Simula JPEG en escala de grises. Divide la imagen en **bloques de 8×8**; a cada bloque le aplica
+> la **DCT**, que lo convierte en 64 «frecuencias» (sin perder nada); luego **cuantiza**:
+> divide cada frecuencia por un número de la tabla oficial de JPEG y **redondea**. Ahí se pierde
+> información, porque los detalles finos se vuelven 0. Después lee el bloque en **zigzag** y agrupa
+> los ceros en símbolos, que comprime con **nuestro Huffman**. Para ver el resultado hace el camino
+> inverso y mide el parecido con el **PSNR**. A menor calidad, más ceros y archivo más pequeño, pero
+> menos parecido.
+
 ### 10.1 La idea
 
 | Paso | Qué hace | ¿Pierde? |
@@ -1716,6 +1912,8 @@ _C = [1 / math.sqrt(2)] + [1.0] * (N - 1)
 
 ### 10.3 Código: DCT e inversa
 
+> **En general:** Convierte un bloque de 8×8 píxeles en 64 coeficientes de frecuencia (la fórmula de la DCT, tal cual).
+
 `compresion/jpeg_dct.py` → `dct2`
 
 ```python
@@ -1731,6 +1929,8 @@ _C = [1 / math.sqrt(2)] + [1.0] * (N - 1)
 10 │             F[u][v] = 0.25 * _C[u] * _C[v] * s
 11 │     return F
 ```
+
+> **En general:** Hace el camino inverso: de las 64 frecuencias vuelve a los 64 píxeles.
 
 `compresion/jpeg_dct.py` → `idct2`
 
@@ -1775,6 +1975,8 @@ Es la tabla **oficial** del estándar JPEG (Anexo K) para luminancia a calidad 5
 arriba-izquierda (se conservan con precisión), grandes abajo-derecha (el ojo casi no nota esos
 detalles).
 
+> **En general:** Ajusta la tabla oficial de cuantización según la calidad elegida (1–100), igual que libjpeg.
+
 `compresion/jpeg_dct.py` → `tabla_calidad`
 
 ```python
@@ -1786,6 +1988,8 @@ detalles).
 6 │             for fila in TABLA_Q50]
 ```
 
+> **En general:** El paso con pérdida: divide cada coeficiente por la tabla y redondea al entero más cercano.
+
 `compresion/jpeg_dct.py` → `cuantizar`
 
 ```python
@@ -1793,6 +1997,8 @@ detalles).
 2 │     """El paso con PÉRDIDA: dividir y redondear al entero más cercano."""
 3 │     return [[int(round(F[u][v] / Q[u][v])) for v in range(N)] for u in range(N)]
 ```
+
+> **En general:** Multiplica de vuelta por la tabla (lo que se redondeó ya no se recupera).
 
 `compresion/jpeg_dct.py` → `descuantizar`
 
@@ -1811,6 +2017,8 @@ detalles).
 
 ### 10.5 Código: zigzag y símbolos
 
+> **En general:** Calcula el orden zigzag de las 64 posiciones, de frecuencias bajas a altas.
+
 `compresion/jpeg_dct.py` → `orden_zigzag`
 
 ```python
@@ -1823,6 +2031,8 @@ detalles).
 - Ordena las 64 posiciones por diagonal `u + v`. Dentro de una diagonal, si es impar, por fila
   `u` creciente; si es par, por columna `v` creciente. Resultado: (0,0), (0,1), (1,0), (2,0),
   (1,1), (0,2), (0,3), (1,2), … = el zigzag de JPEG, de frecuencias bajas a altas.
+
+> **En general:** Convierte un bloque cuantizado en pocos símbolos: la diferencia del DC, pares `(ceros antes, valor)` y `EOB` cuando el resto son ceros.
 
 `compresion/jpeg_dct.py` → `simbolos_entropia`
 
@@ -1870,6 +2080,8 @@ Zigzag: 2, −5, −9, 0, 0, 0, 0, 0, 0, −1, 0, 0, … → símbolos
 
 ### 10.6 Código: imagen completa y PSNR
 
+> **En general:** Aplica toda la tubería JPEG a una imagen bloque por bloque, la reconstruye y estima su tamaño con Huffman.
+
 `compresion/jpeg_dct.py` → `comprimir_imagen`
 
 ```python
@@ -1896,6 +2108,8 @@ Zigzag: 2, −5, −9, 0, 0, 0, 0, 0, 0, −1, 0, 0, … → símbolos
 21 │     bits, _ = huffman.codificar(todos_simbolos)
 22 │     return salida, len(bits), ceros
 ```
+
+> **En general:** Mide qué tan parecida quedó la imagen (en decibeles: más alto = más parecida).
 
 `compresion/jpeg_dct.py` → `psnr`
 
@@ -1926,12 +2140,22 @@ Zigzag: 2, −5, −9, 0, 0, 0, 0, 0, 0, −1, 0, 0, … → símbolos
 
 ## Parte 11 · `audio.py` — enmascaramiento psicoacústico
 
+> ### 📌 En pocas palabras
+> Simula el truco del MP3: **borrar lo que el oído no oye**. Parte el sonido en tramas de 512
+> muestras, pasa cada una a **frecuencias** con la **FFT** (un algoritmo divide y vencerás de
+> O(n log n)), busca los **picos** fuertes y calcula una **curva de enmascaramiento**: cerca de un
+> sonido fuerte, los débiles quedan tapados. Todo lo que queda por debajo de esa curva se **pone en
+> cero**, y con la FFT inversa se vuelve al sonido. El resultado suena prácticamente igual pero
+> tiene menos componentes que guardar.
+
 ### 11.1 La idea
 
 Un sonido fuerte **tapa** a los débiles de frecuencias cercanas: el oído no los percibe. El códec
 los borra. Constantes: `FS = 8000` muestras por segundo, `TRAMA = 512` muestras por trama.
 
 ### 11.2 Código: FFT
+
+> **En general:** Pasa una señal del tiempo a las frecuencias con divide y vencerás (pares e impares), en O(n log n).
 
 `compresion/audio.py` → `fft`
 
@@ -1964,6 +2188,8 @@ directa cuesta O(n²). La **FFT** de Cooley-Tukey usa **divide y vencerás**:
 Recurrencia **T(n) = 2T(n/2) + O(n) ⇒ O(n log n)**, igual que *merge sort*. Requiere que n sea
 potencia de 2 (512 = 2⁹).
 
+> **En general:** Vuelve de las frecuencias al tiempo, reutilizando la FFT con un truco de conjugados.
+
 `compresion/audio.py` → `ifft`
 
 ```python
@@ -1972,6 +2198,8 @@ potencia de 2 (512 = 2⁹).
 3 │     n = len(X)
 4 │     return [v.conjugate() / n for v in fft([v.conjugate() for v in X])]
 ```
+
+> **En general:** Convierte una amplitud a decibeles.
 
 `compresion/audio.py` → `db`
 
@@ -1984,6 +2212,8 @@ potencia de 2 (512 = 2⁹).
 - `db`: convierte amplitud a decibeles (`20·log10`). Para 0 devuelve −240 (en vez de −∞).
 
 ### 11.3 Código: la curva de enmascaramiento
+
+> **En general:** Calcula, para cada frecuencia, el volumen mínimo para que se oiga, considerando que los sonidos fuertes tapan a los débiles cercanos.
 
 `compresion/audio.py` → `curva_enmascaramiento`
 
@@ -2021,6 +2251,8 @@ potencia de 2 (512 = 2⁹).
 
 ### 11.4 Código: comprimir una trama y la señal
 
+> **En general:** Comprime una trama: pasa a frecuencias, borra lo que queda debajo de la curva y vuelve al tiempo.
+
 `compresion/audio.py` → `comprimir_trama`
 
 ```python
@@ -2052,6 +2284,8 @@ potencia de 2 (512 = 2⁹).
 26 │     audibles = sum(1 for k in range(mitad + 1) if niveles[k] > umbral_absoluto_db)
 27 │     return reconstruida, conservados, audibles, borrados
 ```
+
+> **En general:** Aplica `comprimir_trama` a toda la señal, trama por trama, como hace MP3.
 
 `compresion/audio.py` → `comprimir`
 
@@ -2098,6 +2332,14 @@ es si hay un sonido fuerte **cerca**.
 
 ## Parte 12 · `video.py` — cuadros I/P y vectores de movimiento
 
+> ### 📌 En pocas palabras
+> Simula cómo se comprime un video. El primer cuadro (**I**) se guarda completo. Para cada cuadro
+> siguiente (**P**), divide la imagen en bloques de 8×8 y, para cada bloque, busca en el cuadro
+> anterior el bloque **más parecido** (el que da menor **SAD**, la suma de diferencias). Guarda solo
+> el **vector de movimiento** (cuánto se movió) y el **residuo** (la pequeña diferencia que queda).
+> El decodificador copia los bloques según los vectores y suma el residuo: recupera el video
+> exacto guardando mucho menos.
+
 ### 12.1 La idea
 
 El cuadro **I** se guarda completo. En cada cuadro **P**, por cada bloque 8×8 se busca en el cuadro
@@ -2105,6 +2347,8 @@ anterior el bloque más parecido y se guarda solo el **vector de movimiento** y 
 Constantes: `BLOQUE = 8`, `BUSQUEDA = 4` (desplazamientos de −4 a +4).
 
 ### 12.2 Código: SAD
+
+> **En general:** Mide qué tan distinto es un bloque del cuadro actual de un bloque desplazado del cuadro anterior.
 
 `compresion/video.py` → `sad`
 
@@ -2123,6 +2367,8 @@ Constantes: `BLOQUE = 8`, `BUSQUEDA = 4` (desplazamientos de −4 a +4).
 0 = idénticos. Es la medida de «parecido» que usan los códecs reales (es barata de calcular).
 
 ### 12.3 Código: estimación de movimiento
+
+> **En general:** Para cada bloque prueba todos los desplazamientos cercanos y se queda con el más parecido: ese es su vector de movimiento.
 
 `compresion/video.py` → `estimar_movimiento`
 
@@ -2158,6 +2404,8 @@ Constantes: `BLOQUE = 8`, `BUSQUEDA = 4` (desplazamientos de −4 a +4).
 
 ### 12.4 Código: predicción, codificación y costo
 
+> **En general:** Arma un cuadro copiando bloques del cuadro anterior según los vectores.
+
 `compresion/video.py` → `predecir`
 
 ```python
@@ -2170,6 +2418,8 @@ Constantes: `BLOQUE = 8`, `BUSQUEDA = 4` (desplazamientos de −4 a +4).
 7 │                 pred[by + y][bx + x] = ref[by + y + dy][bx + x + dx]
 8 │     return pred
 ```
+
+> **En general:** Comprime el video: el primer cuadro completo (I) y, para los demás (P), vectores + residuo.
 
 `compresion/video.py` → `codificar`
 
@@ -2187,6 +2437,8 @@ Constantes: `BLOQUE = 8`, `BUSQUEDA = 4` (desplazamientos de −4 a +4).
 11 │         referencia = cur          # (sin pérdida aquí, la referencia es exacta)
 12 │     return flujo
 ```
+
+> **En general:** Reconstruye el video: copia según los vectores y suma el residuo.
 
 `compresion/video.py` → `decodificar`
 
@@ -2206,6 +2458,8 @@ Constantes: `BLOQUE = 8`, `BUSQUEDA = 4` (desplazamientos de −4 a +4).
 13 │         referencia = img
 14 │     return video
 ```
+
+> **En general:** Cuenta cuántos valores hay que guardar en cada cuadro.
 
 `compresion/video.py` → `costo`
 
@@ -2235,12 +2489,23 @@ predicción (29.6 %), y el decodificador reconstruye el video exacto.
 
 ## Parte 13 · `archivo.py` — compresor real de archivos
 
+> ### 📌 En pocas palabras
+> Es el **compresor real**: toma cualquier archivo y lo guarda en un formato propio (`.edd`).
+> Tiene dos métodos: **Huffman** sobre los bytes, y **mini-DEFLATE** (primero LZ77 y luego
+> Huffman sobre los tokens, la misma idea del ZIP). Como los códigos no miden 8 bits, una clase
+> (**EscritorBits**) junta los bits y los escribe de a bytes. En la cabecera guarda la firma, el
+> método, el tamaño y **solo las longitudes** de los códigos (gracias a los códigos canónicos).
+> Para descomprimir lee la cabecera, reconstruye los códigos y lee bit a bit. Además compara
+> todo contra zlib, bz2 y lzma y **verifica** que el archivo vuelva idéntico.
+
 ### 13.1 La idea
 
 Un programa que comprime **cualquier archivo** a un formato propio (`.edd`) y lo descomprime. Dos
 métodos: **Huffman** sobre los bytes y **mini-DEFLATE** (LZ77 + Huffman, la idea del ZIP).
 
 ### 13.2 Código: escribir y leer bits
+
+> **En general:** Junta bits sueltos (los códigos de Huffman) y los escribe agrupados en bytes; al final rellena con ceros.
 
 `compresion/archivo.py` → `EscritorBits`
 
@@ -2286,6 +2551,8 @@ métodos: **Huffman** sobre los bytes y **mini-DEFLATE** (LZ77 + Huffman, la ide
 | | `1` | 1 | |
 | terminar() | | | `10000000` (128) |
 
+> **En general:** Lee un archivo bit por bit, que es lo que necesita el decodificador.
+
 `compresion/archivo.py` → `LectorBits`
 
 ```python
@@ -2313,6 +2580,8 @@ métodos: **Huffman** sobre los bytes y **mini-DEFLATE** (LZ77 + Huffman, la ide
 
 ### 13.3 Código: de frecuencias a tablas
 
+> **En general:** Usa nuestro Huffman para calcular la longitud del código de cada símbolo.
+
 `compresion/archivo.py` → `_longitudes`
 
 ```python
@@ -2327,6 +2596,8 @@ métodos: **Huffman** sobre los bytes y **mini-DEFLATE** (LZ77 + Huffman, la ide
 9 │     return longitudes
 ```
 
+> **En general:** A partir de las longitudes, arma los códigos canónicos listos para escribir.
+
 `compresion/archivo.py` → `_tabla_codificacion`
 
 ```python
@@ -2338,6 +2609,8 @@ métodos: **Huffman** sobre los bytes y **mini-DEFLATE** (LZ77 + Huffman, la ide
 6 │     canon = huffman.codigos_canonicos(presentes)
 7 │     return {s: (int(c, 2), len(c)) for s, c in canon.items()}
 ```
+
+> **En general:** Arma la tabla inversa (código → símbolo) para descomprimir.
 
 `compresion/archivo.py` → `_tabla_decodificacion`
 
@@ -2354,6 +2627,8 @@ métodos: **Huffman** sobre los bytes y **mini-DEFLATE** (LZ77 + Huffman, la ide
   `{símbolo: (código como entero, longitud)}`.
 - `_tabla_decodificacion`: al revés, `{(longitud, código): símbolo}`. La longitud va en la clave
   porque `0`, `00` y `000` son el mismo número entero.
+
+> **En general:** Lee bits hasta que formen un código conocido y devuelve su símbolo.
 
 `compresion/archivo.py` → `_leer_simbolo`
 
@@ -2375,6 +2650,8 @@ si el archivo está dañado.
 
 ### 13.4 Código: método Huffman
 
+> **En general:** Método 1: comprime un archivo con Huffman sobre sus bytes y le pone la cabecera.
+
 `compresion/archivo.py` → `comprimir_huffman`
 
 ```python
@@ -2388,6 +2665,8 @@ si el archivo está dañado.
 8 │     cabecera = FIRMA + struct.pack("<BI", METODO_HUFFMAN, len(datos)) + bytes(longitudes)
 9 │     return cabecera + w.terminar()
 ```
+
+> **En general:** Deshace el método 1: lee las longitudes, reconstruye los códigos y lee los bytes.
 
 `compresion/archivo.py` → `_descomprimir_huffman`
 
@@ -2407,6 +2686,8 @@ si el archivo está dañado.
 
 ### 13.5 Código: método mini-DEFLATE
 
+> **En general:** Método 2 (mini-DEFLATE): aplica LZ77, comprime los tokens con Huffman y escribe las distancias aparte.
+
 `compresion/archivo.py` → `comprimir_deflate`
 
 ```python
@@ -2424,6 +2705,8 @@ si el archivo está dañado.
 12 │     cabecera = FIRMA + struct.pack("<BI", METODO_DEFLATE, len(datos)) + bytes(longitudes)
 13 │     return cabecera + w.terminar()
 ```
+
+> **En general:** Deshace el método 2: lee cada símbolo; si es un byte lo escribe, si es una copia lee la distancia y copia.
 
 `compresion/archivo.py` → `_descomprimir_deflate`
 
@@ -2457,6 +2740,8 @@ si el archivo está dañado.
 
 ### 13.6 Código: descomprimir y medir
 
+> **En general:** Punto de entrada para descomprimir: revisa la firma, lee el método y llama al descompresor correcto.
+
 `compresion/archivo.py` → `descomprimir`
 
 ```python
@@ -2471,6 +2756,8 @@ si el archivo está dañado.
  9 │         return _descomprimir_deflate(cuerpo, tamano)
 10 │     raise ValueError("método desconocido en la cabecera: %d" % metodo)
 ```
+
+> **En general:** Comprime con todos los métodos (nuestros y profesionales), mide tamaño y tiempo, y verifica que el archivo vuelva idéntico.
 
 `compresion/archivo.py` → `medir`
 
